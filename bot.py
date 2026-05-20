@@ -76,7 +76,13 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def menu_router(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
-    choice = query.data.split(":", 1)[1]
+
+    data = query.data
+
+    if ":" in data:
+        choice = data.split(":", 1)[1]
+    else:
+        choice = data
 
   if choice == "size":
     text = "*Подбор размера*\n\nВведите ваш *рост* в см (например, 168):"
