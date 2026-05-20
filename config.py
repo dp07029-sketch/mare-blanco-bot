@@ -23,3 +23,9 @@ SIZE_CHART = [
 ]
 
 AVAILABLE_SIZES = ["S", "M", "L", "XL"]
+# ---------- ФОТО-ИНСТРУКЦИИ ----------
+MEASURE_PHOTOS = {
+    "height": "https://raw.githubusercontent.com/USERNAME/mare-blanco-bot/main/height.jpg",  # URL картинки: как мерить рост
+    "chest":  "https://raw.githubusercontent.com/USERNAME/mare-blanco-bot/main/chest.jpg",  # URL картинки: как мерить обхват груди
+    "waist":  "https://raw.githubusercontent.com/USERNAME/mare-blanco-bot/main/waist.jpg",  # URL картинки: как мерить обхват талии
+}
