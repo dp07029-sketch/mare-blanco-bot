@@ -27,7 +27,7 @@ AVAILABLE_SIZES = ["S", "M", "L", "XL"]
 # Сюда вставьте URL картинок (с raw.githubusercontent.com).
 # Пустая строка "" = бот пришлёт только текст без картинки.
 MEASURE_PHOTOS = {
-    "height": "https://raw.githubusercontent.com/USERNAME/mare-blanco-bot/main/height.jpg",
-    "chest":  "https://raw.githubusercontent.com/USERNAME/mare-blanco-bot/main/chest.jpg",
-    "waist":  "https://raw.githubusercontent.com/USERNAME/mare-blanco-bot/main/waist.jpg",
+    "height": "https://raw.githubusercontent.com/dp07029-sketch/mare-blanco-bot/main/height.jpg",
+    "chest":  "https://raw.githubusercontent.com/dp07029-sketch/mare-blanco-bot/main/chest.jpg",
+    "waist":  "https://raw.githubusercontent.com/dp07029-sketch/mare-blanco-bot/main/waist.jpg",
 }
