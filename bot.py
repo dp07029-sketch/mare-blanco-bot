@@ -78,14 +78,21 @@ async def menu_router(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     await query.answer()
     choice = query.data.split(":", 1)[1]
 
-    if choice == "size":
-        text = "*Подбор размера*\n\nВведите ваш *рост* в см (например, 168):"
-        photo = MEASURE_PHOTOS.get("height", "")
-        if photo:
-            await query.message.reply_photo(photo=photo, caption=text, parse_mode="Markdown")
-        else:
-            await query.edit_message_text(text, parse_mode="Markdown")
-        return SIZE_HEIGHT
+  if choice == "size":
+    text = "*Подбор размера*\n\nВведите ваш *рост* в см (например, 168):"
+    photo = MEASURE_PHOTOS.get("height", "")
+
+    if photo:
+        with open(photo, "rb") as img:
+            await query.message.reply_photo(
+                photo=img,
+                caption=text,
+                parse_mode="Markdown"
+            )
+    else:
+        await query.edit_message_text(text, parse_mode="Markdown")
+
+    return SIZE_HEIGHT
 
     if choice == "care":
         await query.edit_message_text(
