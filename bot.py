@@ -22,6 +22,8 @@ from telegram.ext import (
 )
 
 from config import BOT_TOKEN
+import os
+   print("ENV CHECK:", "BOT_TOKEN set" if os.getenv("BOT_TOKEN") else "BOT_TOKEN EMPTY", "| keys count:", len(os.environ))
 import sheets
 from size_helper import recommend_size
 
