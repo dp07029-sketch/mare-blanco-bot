@@ -6,13 +6,8 @@ import logging
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    CallbackQueryHandler,
-    ConversationHandler,
-    ContextTypes,
-    filters,
+    Application, CommandHandler, MessageHandler,
+    CallbackQueryHandler, ConversationHandler, ContextTypes, filters,
 )
 
 from config import BOT_TOKEN
@@ -32,6 +27,7 @@ def main_menu_keyboard():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("Подобрать размер", callback_data="menu:size")],
         [InlineKeyboardButton("Уход за вещью", callback_data="menu:care")],
+        [InlineKeyboardButton("Частые вопросы", callback_data="menu:faq")],
     ])
 
 
@@ -40,7 +36,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text = (
         f"Здравствуйте, {user.first_name}!\n\n"
         "Я помощник магазина *Mare Blanco*.\n\n"
-        "Помогу подобрать размер и расскажу, как ухаживать за вещью."
+        "Помогу подобрать размер, расскажу про уход и отвечу на частые вопросы."
     )
     if update.callback_query:
         await update.callback_query.answer()
@@ -67,21 +63,69 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def menu_router(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
-    choice = query.data.split(":", 1)[1]
+    data = query.data
 
-    if choice == "size":
+    if data == "menu:size":
         await query.edit_message_text(
             "*Подбор размера*\n\nВведите ваш *рост* в см (например, 168):",
             parse_mode="Markdown",
         )
         return SIZE_HEIGHT
 
-    if choice == "care":
+    if data == "menu:care":
         await query.edit_message_text(
             "*Рекомендации по уходу*\n\nВведите *артикул* товара (есть на странице WB):",
             parse_mode="Markdown",
         )
         return CARE_ARTICLE
+
+    if data == "menu:faq":
+        try:
+            faq = sheets.get_faq()
+        except Exception:
+            logger.exception("Ошибка чтения FAQ")
+            faq = []
+        if not faq:
+            await query.edit_message_text(
+                "Раздел вопросов пока пуст. Напишите нам напрямую.",
+                reply_markup=main_menu_keyboard(),
+            )
+            return MENU
+        context.user_data["faq"] = faq
+        keyboard = [[InlineKeyboardButton(item["q"][:64], callback_data=f"faq:{i}")]
+                    for i, item in enumerate(faq)]
+        keyboard.append([InlineKeyboardButton("В главное меню", callback_data="menu:home")])
+        await query.edit_message_text(
+            "*Частые вопросы*\n\nВыберите вопрос:",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+        return MENU
+
+    if data == "menu:home":
+        await query.edit_message_text(
+            "Главное меню - что дальше?", reply_markup=main_menu_keyboard()
+        )
+        return MENU
+
+    if data.startswith("faq:"):
+        try:
+            idx = int(data.split(":", 1)[1])
+        except ValueError:
+            return MENU
+        faq = context.user_data.get("faq") or sheets.get_faq()
+        if 0 <= idx < len(faq):
+            item = faq[idx]
+            keyboard = [
+                [InlineKeyboardButton("К списку вопросов", callback_data="menu:faq")],
+                [InlineKeyboardButton("В главное меню", callback_data="menu:home")],
+            ]
+            await query.edit_message_text(
+                f"*{item['q']}*\n\n{item['a']}",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
+        return MENU
 
     return MENU
 
@@ -104,8 +148,7 @@ async def size_height(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         return SIZE_HEIGHT
     context.user_data["height"] = value
     await update.message.reply_text(
-        "Хорошо! Теперь *обхват груди* в см (например, 92):",
-        parse_mode="Markdown",
+        "Хорошо! Теперь *обхват груди* в см (например, 92):", parse_mode="Markdown"
     )
     return SIZE_CHEST
 
@@ -117,8 +160,7 @@ async def size_chest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return SIZE_CHEST
     context.user_data["chest"] = value
     await update.message.reply_text(
-        "И последнее - *обхват талии* в см:",
-        parse_mode="Markdown",
+        "И последнее - *обхват талии* в см:", parse_mode="Markdown"
     )
     return SIZE_WAIST
 
@@ -151,10 +193,8 @@ async def care_receive_article(update: Update, context: ContextTypes.DEFAULT_TYP
     product = sheets.get_product(article)
     if not product:
         await update.message.reply_text(
-            f"Не нашла товар с артикулом *{article}*.\n"
-            "Проверьте артикул или напишите нам напрямую.",
-            parse_mode="Markdown",
-            reply_markup=main_menu_keyboard(),
+            f"Не нашла товар с артикулом *{article}*.\nПроверьте артикул или напишите нам.",
+            parse_mode="Markdown", reply_markup=main_menu_keyboard(),
         )
         return MENU
     care = product.get("care") or "Инструкция по уходу скоро появится."
@@ -162,8 +202,7 @@ async def care_receive_article(update: Update, context: ContextTypes.DEFAULT_TYP
     name = product.get("name") or article
     await update.message.reply_text(
         f"*{name}*\n\nМатериал: {material}\n\n_Рекомендации по уходу:_\n{care}",
-        parse_mode="Markdown",
-        reply_markup=main_menu_keyboard(),
+        parse_mode="Markdown", reply_markup=main_menu_keyboard(),
     )
     return MENU
 
@@ -187,13 +226,17 @@ def main() -> None:
     conv = ConversationHandler(
         entry_points=[CommandHandler("start", start), CommandHandler("menu", show_menu)],
         states={
-            MENU: [CallbackQueryHandler(menu_router, pattern=r"^menu:")],
+            MENU: [CallbackQueryHandler(menu_router, pattern=r"^(menu|faq):")],
             SIZE_HEIGHT: [MessageHandler(filters.TEXT & ~filters.COMMAND, size_height)],
             SIZE_CHEST: [MessageHandler(filters.TEXT & ~filters.COMMAND, size_chest)],
             SIZE_WAIST: [MessageHandler(filters.TEXT & ~filters.COMMAND, size_waist)],
             CARE_ARTICLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, care_receive_article)],
         },
-        fallbacks=[CommandHandler("cancel", cancel), CommandHandler("menu", show_menu), CommandHandler("start", start)],
+        fallbacks=[
+            CommandHandler("cancel", cancel),
+            CommandHandler("menu", show_menu),
+            CommandHandler("start", start),
+        ],
         allow_reentry=True,
     )
     app.add_handler(conv)
