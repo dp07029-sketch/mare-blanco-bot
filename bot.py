@@ -20,12 +20,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-MENU, SIZE_HEIGHT, SIZE_CHEST, SIZE_WAIST, CARE_ARTICLE = range(5)
+MENU, SIZE_HEIGHT, SIZE_CHEST, SIZE_WAIST, CARE_ARTICLE, COMBINE_ARTICLE = range(6)
 
 
 def main_menu_keyboard():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("Подобрать размер", callback_data="menu:size")],
+        [InlineKeyboardButton("С чем сочетать", callback_data="menu:combine")],
         [InlineKeyboardButton("Уход за вещью", callback_data="menu:care")],
         [InlineKeyboardButton("Частые вопросы", callback_data="menu:faq")],
     ])
@@ -36,7 +37,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text = (
         f"Здравствуйте, {user.first_name}!\n\n"
         "Я помощник магазина *Mare Blanco*.\n\n"
-        "Помогу подобрать размер, расскажу про уход и отвечу на частые вопросы."
+        "Помогу подобрать размер, подскажу с чем сочетать, расскажу про уход и отвечу на вопросы."
     )
     if update.callback_query:
         await update.callback_query.answer()
@@ -74,10 +75,17 @@ async def menu_router(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
     if data == "menu:care":
         await query.edit_message_text(
-            "*Рекомендации по уходу*\n\nВведите *артикул* товара (есть на странице WB):",
+            "*Рекомендации по уходу*\n\nВведите *артикул* товара:",
             parse_mode="Markdown",
         )
         return CARE_ARTICLE
+
+    if data == "menu:combine":
+        await query.edit_message_text(
+            "*С чем сочетать*\n\nВведите *артикул* товара, и я подскажу идеи образов:",
+            parse_mode="Markdown",
+        )
+        return COMBINE_ARTICLE
 
     if data == "menu:faq":
         try:
@@ -207,6 +215,48 @@ async def care_receive_article(update: Update, context: ContextTypes.DEFAULT_TYP
     return MENU
 
 
+async def combine_receive_article(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    article = update.message.text.strip()
+    if not article.isdigit() or not (5 <= len(article) <= 12):
+        await update.message.reply_text("Артикул должен быть числом из 7-10 цифр. Попробуйте ещё раз:")
+        return COMBINE_ARTICLE
+    product = sheets.get_product(article)
+    if not product:
+        await update.message.reply_text(
+            f"Не нашла товар с артикулом *{article}*.\nПроверьте артикул или напишите нам.",
+            parse_mode="Markdown", reply_markup=main_menu_keyboard(),
+        )
+        return MENU
+
+    combine = product.get("combine") or ""
+    name = product.get("name") or article
+    photo = product.get("combine_photo") or ""
+
+    if not combine:
+        await update.message.reply_text(
+            f"Для товара *{name}* идеи стайлинга пока готовятся. Напишите нам - подскажем лично.",
+            parse_mode="Markdown", reply_markup=main_menu_keyboard(),
+        )
+        return MENU
+
+    caption = f"*{name}*\n\n_С чем сочетать:_\n{combine}"
+
+    if photo and len(caption) <= 1024:
+        try:
+            await update.message.reply_photo(
+                photo=photo, caption=caption, parse_mode="Markdown",
+                reply_markup=main_menu_keyboard(),
+            )
+            return MENU
+        except Exception:
+            logger.exception("Не удалось отправить фото сочетания, шлём текст")
+
+    await update.message.reply_text(
+        caption, parse_mode="Markdown", reply_markup=main_menu_keyboard()
+    )
+    return MENU
+
+
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Действие отменено.", reply_markup=main_menu_keyboard())
     return MENU
@@ -231,6 +281,7 @@ def main() -> None:
             SIZE_CHEST: [MessageHandler(filters.TEXT & ~filters.COMMAND, size_chest)],
             SIZE_WAIST: [MessageHandler(filters.TEXT & ~filters.COMMAND, size_waist)],
             CARE_ARTICLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, care_receive_article)],
+            COMBINE_ARTICLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, combine_receive_article)],
         },
         fallbacks=[
             CommandHandler("cancel", cancel),
