@@ -9,6 +9,7 @@ GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID", "")
 GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON", "")
 
 SHEET_CATALOG = "Каталог"
+SHEET_FAQ = "FAQ"
 
 SIZE_CHART = [
     {"size": "XS", "chest": (78, 82),   "waist": (60, 64),  "height": (150, 165)},
