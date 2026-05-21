@@ -1,5 +1,5 @@
 """
-Работа с Google Таблицей: каталог товаров.
+Работа с Google Таблицей: каталог товаров и FAQ.
 """
 
 import json
@@ -9,7 +9,7 @@ from typing import Optional
 import gspread
 from google.oauth2.service_account import Credentials
 
-from config import GOOGLE_CREDENTIALS_JSON, GOOGLE_SHEET_ID, SHEET_CATALOG
+from config import GOOGLE_CREDENTIALS_JSON, GOOGLE_SHEET_ID, SHEET_CATALOG, SHEET_FAQ
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +31,12 @@ def _get_spreadsheet():
     return _spreadsheet
 
 
-def _get_catalog_sheet():
+def _get_or_create(title: str, headers: list):
     ss = _get_spreadsheet()
-    headers = ["Артикул", "Название", "Материал", "Уход"]
     try:
-        ws = ss.worksheet(SHEET_CATALOG)
+        ws = ss.worksheet(title)
     except gspread.WorksheetNotFound:
-        ws = ss.add_worksheet(title=SHEET_CATALOG, rows=1000, cols=len(headers))
+        ws = ss.add_worksheet(title=title, rows=200, cols=len(headers))
         ws.append_row(headers, value_input_option="USER_ENTERED")
         return ws
     if not ws.row_values(1):
@@ -46,7 +45,7 @@ def _get_catalog_sheet():
 
 
 def get_product(article: str) -> Optional[dict]:
-    ws = _get_catalog_sheet()
+    ws = _get_or_create(SHEET_CATALOG, ["Артикул", "Название", "Материал", "Уход"])
     rows = ws.get_all_records()
     article = str(article).strip()
     for row in rows:
@@ -58,3 +57,15 @@ def get_product(article: str) -> Optional[dict]:
                 "care":     str(row.get("Уход", "")).strip(),
             }
     return None
+
+
+def get_faq() -> list:
+    ws = _get_or_create(SHEET_FAQ, ["Вопрос", "Ответ"])
+    rows = ws.get_all_records()
+    items = []
+    for row in rows:
+        q = str(row.get("Вопрос", "")).strip()
+        a = str(row.get("Ответ", "")).strip()
+        if q and a:
+            items.append({"q": q, "a": a})
+    return items
