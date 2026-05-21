@@ -1,5 +1,5 @@
 """
-Работа с Google Таблицей: каталог товаров (поиск инструкции по уходу по артикулу).
+Работа с Google Таблицей: каталог товаров.
 """
 
 import json
@@ -46,16 +46,15 @@ def _get_catalog_sheet():
 
 
 def get_product(article: str) -> Optional[dict]:
-    """Ищет товар по артикулу в листе 'Каталог'. Возвращает dict или None."""
     ws = _get_catalog_sheet()
     rows = ws.get_all_records()
     article = str(article).strip()
     for row in rows:
         if str(row.get("Артикул", "")).strip() == article:
             return {
-                "article": article,
-                "name": str(row.get("Название", "")).strip(),
+                "article":  article,
+                "name":     str(row.get("Название", "")).strip(),
                 "material": str(row.get("Материал", "")).strip(),
-                "care": str(row.get("Уход", "")).strip(),
+                "care":     str(row.get("Уход", "")).strip(),
             }
     return None
