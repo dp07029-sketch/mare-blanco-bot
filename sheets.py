@@ -45,16 +45,20 @@ def _get_or_create(title: str, headers: list):
 
 
 def get_product(article: str) -> Optional[dict]:
-    ws = _get_or_create(SHEET_CATALOG, ["Артикул", "Название", "Материал", "Уход"])
+    ws = _get_or_create(SHEET_CATALOG, [
+        "Артикул", "Название", "Материал", "Уход", "Сочетания", "Фото сочетания"
+    ])
     rows = ws.get_all_records()
     article = str(article).strip()
     for row in rows:
         if str(row.get("Артикул", "")).strip() == article:
             return {
-                "article":  article,
-                "name":     str(row.get("Название", "")).strip(),
-                "material": str(row.get("Материал", "")).strip(),
-                "care":     str(row.get("Уход", "")).strip(),
+                "article":   article,
+                "name":      str(row.get("Название", "")).strip(),
+                "material":  str(row.get("Материал", "")).strip(),
+                "care":      str(row.get("Уход", "")).strip(),
+                "combine":   str(row.get("Сочетания", "")).strip(),
+                "combine_photo": str(row.get("Фото сочетания", "")).strip(),
             }
     return None
 
